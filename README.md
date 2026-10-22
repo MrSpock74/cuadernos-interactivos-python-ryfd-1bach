@@ -65,3 +65,7 @@ El código no contiene datos de alumnado. La hoja de progreso que crea la aplica
 © Manuel Romero Fraidía. Licencia [Creative Commons Atribución-NoComercial-CompartirIgual 4.0 Internacional (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.es). Consulta el archivo `LICENSE`.
 
 El cuaderno de las sesiones 5-8 está **basado en el curso «Introducción a la Programación con Python» de [IEEE-ITBA](https://ieeeitba.org.ar/)** (Instituto Tecnológico de Buenos Aires), distribuido también con licencia CC BY-NC-SA. Curso original: <https://ieeeitba.org.ar/cursospython>.
+
+El cuaderno de práctica extra es de elaboración propia, a partir de ejercicios de fuentes abiertas adaptados por el autor.
+
+Presentación del proyecto, con instrucciones detalladas: <https://mrspock74.github.io/cuadernos-interactivos-python-ryfd-1bach/>
