@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cuadernos interactivos de Python para Classroom</title>
+<meta name="description" content="Dos cuadernos de Python que el alumnado ejecuta en el navegador, con guardado de progreso, entrega, corrección y notas a Google Classroom. Aplicación de Google Apps Script.">
+<style>
+  :root{
+    --bg:#eef4f7; --card:#ffffff; --ink:#1f2f3a; --muted:#566872;
+    --blue:#1f6f9a; --blue-d:#154f70; --cyan:#27b3c9; --sun:#f0b840; --line:#d6e2e9; --code:#e8f0f5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14202a; --card:#1d2d3a; --ink:#e9f1f5; --muted:#a3b6c1; --blue:#6bc0e6; --blue-d:#8fd1ee; --cyan:#4fd0e3; --sun:#f0b840; --line:#2e4252; --code:#243847; }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:0 16px}
+  header{padding:56px 0 28px}
+  .tag{display:inline-block;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue-d);font-weight:700}
+  h1{font-size:clamp(28px,5vw,42px);line-height:1.15;margin:.3em 0 .4em}
+  .lead{font-size:19px;color:var(--muted);max-width:680px}
+  .btns{display:flex;flex-wrap:wrap;gap:12px;margin-top:24px}
+  .btn{display:inline-block;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600;border:2px solid var(--blue);color:var(--blue-d)}
+  .btn.main{background:var(--blue);color:#fff}
+  @media (prefers-color-scheme: dark){ .btn.main{color:#0d1a22} }
+  nav.toc{display:flex;flex-wrap:wrap;gap:8px 18px;padding:14px 0 0;font-size:15px}
+  nav.toc a{color:var(--blue-d);text-decoration:none;border-bottom:1px dotted var(--blue)}
+  section{padding:30px 0}
+  h2{font-size:27px;margin:0 0 6px}
+  h2 + p.sub{margin:0 0 18px;color:var(--muted)}
+  h3{margin:0 0 6px;font-size:20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px}
+  .card .meta{display:inline-block;font-size:13px;font-weight:700;color:var(--blue-d);background:var(--code);border-radius:99px;padding:2px 10px;margin-bottom:10px}
+  .card ul{margin:10px 0 0;padding-left:20px;color:var(--muted)}
+  .card li{margin:4px 0}
+  .card p{margin:0 0 6px;color:var(--muted)}
+  .learn{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+  .learn div{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--cyan);border-radius:10px;padding:14px 16px}
+  .learn strong{display:block;margin-bottom:2px}
+  .learn span{color:var(--muted);font-size:16px}
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .flow{margin:0;padding-left:20px;color:var(--muted)}
+  .flow li{margin:6px 0}
+  ol.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  ol.steps > li{counter-increment:s;position:relative;padding:0 0 22px 56px}
+  ol.steps > li::before{content:counter(s);position:absolute;left:0;top:0;width:38px;height:38px;border-radius:50%;background:var(--sun);color:#2b2b2b;font-weight:800;display:flex;align-items:center;justify-content:center}
+  ol.steps > li > strong:first-child{display:block;font-size:18px;margin-bottom:2px}
+  ol.steps p{margin:4px 0;color:var(--muted)}
+  code{background:var(--code);border-radius:6px;padding:1px 6px;font-size:.92em}
+  .callout{background:var(--card);border-left:5px solid var(--sun);border-radius:8px;padding:12px 16px;margin:10px 0;color:var(--muted);font-size:16px}
+  .callout b{color:var(--ink)}
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 18px;margin:10px 0}
+  summary{cursor:pointer;font-weight:600;padding:12px 0}
+  details p{margin:0 0 12px;color:var(--muted)}
+  a{color:var(--blue-d)}
+  footer{border-top:1px solid var(--line);margin-top:30px;padding:26px 0 56px;color:var(--muted);font-size:15px}
+  footer p{margin:6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="tag">Python · Google Apps Script · Google Classroom</span>
+  <h1>Cuadernos interactivos de Python para tu clase</h1>
+  <p class="lead">Dos cuadernos que el alumnado trabaja <strong>directamente en el navegador</strong>, sin instalar nada. La aplicación guarda su progreso, recoge la entrega, te deja corregir con retroalimentación y lleva la nota a Google Classroom.</p>
+  <div class="btns">
+    <a class="btn main" href="#instalar">Cómo instalarlos</a>
+    <a class="btn" href="https://github.com/MrSpock74/cuadernos-interactivos-python-ryfd-1bach">Ver el código en GitHub</a>
+  </div>
+  <nav class="toc" aria-label="Contenido de la página">
+    <a href="#cuadernos">Los dos cuadernos</a>
+    <a href="#aprender">Qué se aprende</a>
+    <a href="#funciona">Cómo funciona</a>
+    <a href="#instalar">Instalación</a>
+    <a href="#faq">Preguntas frecuentes</a>
+  </nav>
+</header>
+
+<section id="cuadernos">
+  <h2>Los dos cuadernos</h2>
+  <p class="sub">Están pensados para 1.º de Bachillerato (Robótica y Fabricación Digital I), pero sirven para cualquier grupo que dé sus primeros pasos con Python. Cada uno es una aplicación independiente: puedes instalar solo uno o los dos.</p>
+  <div class="grid">
+    <div class="card">
+      <span class="meta">4 sesiones</span>
+      <h3>Cuaderno de las sesiones 5-8</h3>
+      <p>El bloque de programación completo, pensado para alumnado que ya ha programado con bloques y da el salto al código.</p>
+      <ul>
+        <li><strong>Sesión 5:</strong> qué es programar, variables, tipos de datos y entrada/salida. Reto: la ficha de un sensor.</li>
+        <li><strong>Sesión 6:</strong> operadores y la estructura <code>if</code>. Reto: «caza-fallos» (encontrar y corregir errores).</li>
+        <li><strong>Sesión 7:</strong> bucles <code>while</code> y <code>for</code>. Reto: «mi reto completo».</li>
+        <li><strong>Sesión 8:</strong> funciones y reto final a entregar, con dos niveles: la estación de sensores (base, para todo el mundo) y una conjetura matemática clásica (avanzado, opcional, con autocomprobación).</li>
+        <li><strong>Banco de retos opcionales</strong> de dificultad creciente: promedio, test de primalidad, adivina el número y una sucesión famosa.</li>
+        <li><strong>Dos anexos opcionales:</strong> funciones recursivas y Python en la ingeniería electrónica.</li>
+      </ul>
+      <p style="margin-top:10px">Cada tema incluye mini-desafíos para practicar justo después de la explicación.</p>
+    </div>
+    <div class="card">
+      <span class="meta">12 ejercicios</span>
+      <h3>Cuaderno de práctica extra</h3>
+      <p>Un cuaderno complementario para consolidar lo anterior con ejercicios más variados. Tiene dos partes:</p>
+      <ul>
+        <li><strong>Núcleo (9 ejercicios), para todo el mundo:</strong> conversor de temperaturas, área de un círculo, ecuación de segundo grado, comprobar si dos números están en orden, nota media y calificación, pedir números hasta que sean positivos, división por restas sucesivas, múltiplos de 3 y pares e impares en un intervalo.</li>
+        <li><strong>Retos opcionales (3), para ir más allá:</strong> ¿es primo?, números perfectos, abundantes o defectivos, y un rectángulo de asteriscos.</li>
+      </ul>
+      <p style="margin-top:10px">Trabaja variables, entrada y salida, condiciones y los dos tipos de bucle. Es la continuación natural del cuaderno de las sesiones 5-8.</p>
+    </div>
+  </div>
+</section>
+
+<section id="aprender">
+  <h2>Qué aprende el alumnado</h2>
+  <p class="sub">Al terminar los cuadernos, el alumnado es capaz de escribir y probar programas sencillos en Python, y entiende las ideas que luego usará para programar placas como Arduino o ESP32.</p>
+  <div class="learn">
+    <div><strong>Variables y tipos de datos</strong><span>Guardar información, elegir buenos nombres y distinguir números, texto y valores lógicos.</span></div>
+    <div><strong>Entrada y salida</strong><span>Pedir datos al usuario con <code>input</code> y mostrar resultados con <code>print</code>.</span></div>
+    <div><strong>Operadores y decisiones</strong><span>Calcular, comparar y hacer que el programa elija un camino con <code>if</code>.</span></div>
+    <div><strong>Repetición</strong><span>Automatizar tareas con <code>while</code> y <code>for</code> y saber cuál conviene en cada caso.</span></div>
+    <div><strong>Funciones</strong><span>Dividir un problema en partes, darles nombre y reutilizarlas.</span></div>
+    <div><strong>Depurar errores</strong><span>Leer un programa, localizar qué falla y corregirlo (el reto «caza-fallos»).</span></div>
+    <div><strong>Resolver problemas</strong><span>Pasar de un enunciado a un algoritmo y a su código, con retos de distinto nivel.</span></div>
+    <div><strong>Del bloque al código</strong><span>Reconocer en Python las mismas ideas que ya conocía de la programación por bloques.</span></div>
+  </div>
+</section>
+
+<section id="funciona">
+  <h2>Cómo funciona</h2>
+  <p class="sub">Un mismo enlace sirve a todo el mundo: la aplicación reconoce quién entra y le muestra su pantalla.</p>
+  <div class="two">
+    <div class="card">
+      <h3>Para el alumnado</h3>
+      <ol class="flow">
+        <li>Abre el enlace con su cuenta educativa de Google.</li>
+        <li>Lee cada apartado y ejecuta el código de cada celda con su botón, directamente en el navegador.</li>
+        <li>Escribe sus soluciones. El progreso se guarda solo.</li>
+        <li>Cuando termina, pulsa <strong>Entregar</strong>. Si necesita corregir algo, le reabres la entrega.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Para el profesorado</h3>
+      <ol class="flow">
+        <li>Entra con el mismo enlace y la aplicación te lleva al <strong>panel</strong>.</li>
+        <li>Ves las entregas y puedes abrir el trabajo de cada alumno o alumna.</li>
+        <li>Escribes la nota y la retroalimentación.</li>
+        <li>La nota se envía a <strong>Google Classroom</strong>. La tarea se crea como borrador y la publicas tú cuando quieras.</li>
+      </ol>
+    </div>
+  </div>
+  <p class="callout"><b>Dónde se guarda todo:</b> el progreso y las notas quedan en una hoja de cálculo que la aplicación crea sola en <b>tu</b> Drive. Nada se envía a servidores externos.</p>
+</section>
+
+<section id="instalar">
+  <h2>Instalación paso a paso</h2>
+  <p class="sub">Solo hay que hacerlo una vez por cuaderno. No necesitas saber programar: se trata de copiar, pegar y cambiar tres datos. Calcula unos 15 minutos.</p>
+
+  <div class="callout"><b>Antes de empezar, comprueba que tienes:</b> una cuenta de Google Workspace for Education (la del centro), una clase creada en Google Classroom y acceso a la API de Classroom. Algunos centros la tienen restringida; si más adelante da un error de permisos, es la primera cosa que debes consultar con quien administra el dominio.</div>
+
+  <ol class="steps">
+    <li><strong>Descarga los archivos</strong>
+      <p>Entra en el <a href="https://github.com/MrSpock74/cuadernos-interactivos-python-ryfd-1bach">repositorio de GitHub</a>, pulsa el botón verde <strong>Code</strong> y elige <strong>Download ZIP</strong>. Descomprime la carpeta. Dentro verás una carpeta por cuaderno: <code>cuaderno-sesiones-5-8</code> y <code>cuaderno-practica-extra</code>. Elige el cuaderno que quieras instalar y repite todos los pasos con la otra carpeta si quieres los dos.</p>
+    </li>
+    <li><strong>Crea un proyecto nuevo de Apps Script</strong>
+      <p>Entra en <a href="https://script.google.com">script.google.com</a> con tu cuenta del centro y pulsa <strong>Nuevo proyecto</strong>. Ponle un nombre que reconozcas, por ejemplo «Cuaderno Python».</p>
+    </li>
+    <li><strong>Pega el código del servidor</strong>
+      <p>Abre <code>Code.gs</code> de la carpeta con un editor de texto, copia todo el contenido y pégalo en el archivo <code>Code.gs</code> del proyecto, sustituyendo lo que haya.</p>
+    </li>
+    <li><strong>Crea las dos pantallas</strong>
+      <p>En el proyecto, pulsa <strong>+</strong> junto a «Archivos» y elige <strong>HTML</strong>. Crea un archivo llamado <code>index</code> y pega en él el contenido de <code>index.html</code>. Repite con un segundo archivo llamado <code>profesor</code> y el contenido de <code>profesor.html</code>.</p>
+      <p class="callout"><b>Importante:</b> los nombres deben ser exactamente <code>index</code> y <code>profesor</code>, en minúsculas y sin escribir «.html». Apps Script lo añade solo. Si los llamas de otra forma, la aplicación no los encontrará.</p>
+    </li>
+    <li><strong>Sustituye el manifiesto</strong>
+      <p>Entra en <strong>Configuración del proyecto</strong> (la rueda dentada) y activa <strong>«Mostrar el archivo de manifiesto appsscript.json en el editor»</strong>. Vuelve al editor, abre <code>appsscript.json</code>, borra su contenido y pega el de <code>appsscript.json</code> de la carpeta. Este archivo declara los permisos que necesita la aplicación.</p>
+    </li>
+    <li><strong>Activa el servicio de Classroom</strong>
+      <p>En el menú izquierdo del editor, junto a <strong>Servicios</strong>, pulsa <strong>+</strong>, elige <strong>Google Classroom API</strong> y pulsa <strong>Añadir</strong>.</p>
+    </li>
+    <li><strong>Configura tus datos en <code>Code.gs</code></strong>
+      <p>Cerca del principio de <code>Code.gs</code> busca las líneas marcadas con <code>CAMBIA ESTO</code> y cámbialas:</p>
+      <p>• <code>PROFESOR_EMAILS</code>: pon tu correo del centro entre comillas. Puedes poner varios, separados por comas. Quien figure aquí verá el panel de corrección.</p>
+      <p>• <code>CLASSROOM_COURSE_ID</code>: el identificador de tu clase de Classroom. Lo ves en la dirección de la clase, es el número largo que aparece después de <code>/c/</code> (o <code>/u/0/c/</code>) en la barra del navegador. En algunos casos es una cadena de letras y números; cópiala entera.</p>
+      <p>• <code>CLASSROOM_COURSEWORK_ID</code>: déjalo vacío por ahora; lo rellenarás en el siguiente paso.</p>
+    </li>
+    <li><strong>Crea la tarea en Classroom desde la aplicación</strong>
+      <p>En la barra superior del editor, elige la función <code>crearTareaCuadernoPython</code> (cuaderno de las sesiones 5-8) o <code>crearTareaPracticaExtra</code> (cuaderno de práctica extra) y pulsa <strong>Ejecutar</strong>. La primera vez, Google te pedirá autorización: acéptala (puede aparecer un aviso de «aplicación no verificada»; es normal en tus propios proyectos, pulsa en <strong>Configuración avanzada</strong> y sigue).</p>
+      <p>Cuando termine, abre <strong>Ver → Registros de ejecución</strong>. Verás una línea con el <strong>id de tarea</strong>. Cópialo y pégalo en <code>CLASSROOM_COURSEWORK_ID</code> entre las comillas. Guarda con Ctrl+S.</p>
+      <p class="callout"><b>¿Por qué así?</b> Classroom solo permite que una aplicación ponga notas en las tareas que ella misma ha creado. Si creas la tarea a mano en Classroom, al volcar las notas saldrá el error <code>ProjectPermissionDenied</code>. El cuaderno de las sesiones 5-8 crea la tarea como <b>borrador</b>: el alumnado no la verá hasta que tú la publiques desde Classroom. El de práctica extra la crea ya <b>publicada</b>; si prefieres un borrador, cambia <code>state: "PUBLISHED"</code> por <code>state: "DRAFT"</code> en la función antes de ejecutarla.</p>
+    </li>
+    <li><strong>Publica la aplicación web</strong>
+      <p>Pulsa <strong>Implementar → Nueva implementación</strong>, y en el engranaje elige <strong>Aplicación web</strong>. Configura: <em>Ejecutar como</em> <strong>Yo</strong>, y <em>Quién tiene acceso</em> <strong>cualquier usuario de tu dominio</strong>. Pulsa <strong>Implementar</strong> y copia la dirección que termina en <code>/exec</code>.</p>
+    </li>
+    <li><strong>Pruébala y compártela</strong>
+      <p>Abre la dirección <code>/exec</code>: como figuras en <code>PROFESOR_EMAILS</code>, verás el panel del profesorado. Para ver la pantalla del alumnado, añade <code>?vista=alumno</code> al final. Comprueba que el cuaderno carga y que una celda de código se ejecuta. Cuando todo funcione, comparte la dirección <code>/exec</code> con el alumnado (por ejemplo, en la tarea de Classroom) y publica la tarea.</p>
+    </li>
+  </ol>
+
+  <div class="callout"><b>Si cambias algo después:</b> usa <strong>Implementar → Gestionar implementaciones</strong>, pulsa el lápiz y elige <strong>Nueva versión</strong>. Si no lo haces, la dirección <code>/exec</code> sigue sirviendo la versión anterior.</div>
+</section>
+
+<section id="faq">
+  <h2>Preguntas frecuentes</h2>
+  <p class="sub">Los problemas más habituales y cómo resolverlos.</p>
+
+  <details>
+    <summary>El cuaderno se queda cargando y no arranca. ¿Qué hago?</summary>
+    <p>El cuaderno ejecuta Python con una biblioteca llamada Pyodide, que se descarga de internet (<code>cdn.jsdelivr.net</code>). Si la red del centro bloquea ese dominio, no arranca. Pide a quien gestiona la red que lo permita, o prueba desde otra red, por ejemplo con los datos del móvil, para confirmar que es eso.</p>
+  </details>
+  <details>
+    <summary>Al volcar la nota sale «ProjectPermissionDenied».</summary>
+    <p>Significa que la tarea de Classroom no fue creada por esta aplicación. Ejecuta <code>crearTareaCuadernoPython</code> o <code>crearTareaPracticaExtra</code> desde el propio proyecto, copia el nuevo id de tarea en <code>CLASSROOM_COURSEWORK_ID</code>, guarda y crea una nueva versión de la implementación.</p>
+  </details>
+  <details>
+    <summary>¿Qué pasa con la nota si Classroom falla?</summary>
+    <p>La nota y la retroalimentación se guardan siempre en la hoja de cálculo de tu Drive. Si el envío a Classroom falla, el panel te avisa del motivo y puedes volver a intentarlo.</p>
+  </details>
+  <details>
+    <summary>Mi centro no deja usar la API de Classroom.</summary>
+    <p>Es una restricción del administrador del dominio. Tendrá que habilitar el acceso a la API de Classroom para tu cuenta o para la aplicación. Mientras tanto, el cuaderno sigue funcionando y las notas quedan en la hoja de cálculo.</p>
+  </details>
+  <details>
+    <summary>¿Dónde están los datos del alumnado?</summary>
+    <p>En una hoja de cálculo que la aplicación crea en tu Drive la primera vez que alguien guarda algo. Contiene el correo y el contenido de las celdas de cada alumno o alumna. Trátala como datos personales, no la compartas más de lo necesario y no la subas a ningún repositorio.</p>
+  </details>
+  <details>
+    <summary>¿Puedo cambiar los ejercicios o hacer un cuaderno de otro tema?</summary>
+    <p>Sí. El cuaderno está dentro de <code>Code.gs</code>, en la variable <code>NOTEBOOK_CELLS</code>: una lista de celdas, cada una de tipo <code>markdown</code> (texto) o <code>code</code> (código). Cambia esas celdas por las tuyas, ajusta los criterios de corrección en <code>profesor.html</code> y vuelve a publicar una nueva versión.</p>
+  </details>
+  <details>
+    <summary>¿Cuántas cuentas pueden usarlo a la vez?</summary>
+    <p>Cada docente instala y usa su propia copia, y su alumnado entra con el mismo enlace. Los límites son los de Google Apps Script para tu cuenta, que cubren de sobra una clase normal.</p>
+  </details>
+</section>
+
+<footer>
+  <p><strong>Manuel Romero Fraidía</strong> · Departamento de Tecnología · IES Murillo, Sevilla.</p>
+  <p>Licencia <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.es">Creative Commons Atribución-NoComercial-CompartirIgual 4.0 (CC BY-NC-SA 4.0)</a>.</p>
+  <p>El cuaderno de las sesiones 5-8 está basado en el curso «Introducción a la Programación con Python» de <a href="https://ieeeitba.org.ar/cursospython">IEEE-ITBA</a> (Instituto Tecnológico de Buenos Aires), también con licencia CC BY-NC-SA. El cuaderno de práctica extra es de elaboración propia, a partir de ejercicios de fuentes abiertas adaptados.</p>
+  <p><a href="https://github.com/MrSpock74/cuadernos-interactivos-python-ryfd-1bach">Código fuente en GitHub</a></p>
+</footer>
+
+</div>
+</body>
+</html>
