@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- Version de Pyodide verificada en pyodide.org (quickstart oficial).
+       Si en el futuro deja de cargar, comprueba la version estable
+       actual en https://pyodide.org/en/stable/usage/quickstart.html -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v314.0.3/full/pyodide.js"></script>
+  <style>
+    :root {
+      --azul: #2563eb; --verde: #16a34a; --amarillo: #ca8a04; --rojo: #dc2626;
+      --gris-fondo: #f8fafc; --gris-borde: #e2e8f0; --texto: #1e293b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--gris-fondo); color: var(--texto);
+      margin: 0; padding: 0 0 80px 0;
+    }
+    #barra-superior {
+      position: sticky; top: 0; z-index: 10;
+      background: #0f172a; color: white;
+      padding: 12px 20px; display: flex; align-items: center; gap: 12px;
+      flex-wrap: wrap;
+    }
+    #barra-superior h1 { font-size: 16px; margin: 0; flex: 1; }
+    #estado { font-size: 13px; color: #94a3b8; }
+    button {
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      border: none; border-radius: 6px; padding: 8px 16px; cursor: pointer;
+    }
+    #btn-guardar { background: var(--azul); color: white; }
+    #btn-entregar { background: var(--verde); color: white; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #contenedor { max-width: 860px; margin: 0 auto; padding: 20px; }
+    .celda-md { padding: 4px 0; }
+    .celda-md h1, .celda-md h2, .celda-md h3 { margin-top: 24px; }
+    .celda-md code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; }
+    .celda-md pre code { display: block; padding: 10px; overflow-x: auto; }
+    .celda-code {
+      background: white; border: 1px solid var(--gris-borde); border-radius: 8px;
+      margin: 12px 0; overflow: hidden;
+    }
+    .celda-code textarea {
+      width: 100%; min-height: 60px; font-family: "SF Mono", Consolas, monospace;
+      font-size: 13.5px; border: none; padding: 12px; resize: vertical;
+      background: #0f172a; color: #e2e8f0; display: block;
+    }
+    .celda-code textarea:focus { outline: 2px solid var(--azul); outline-offset: -2px; }
+    .barra-celda {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 10px; background: #f1f5f9; border-top: 1px solid var(--gris-borde);
+    }
+    .btn-ejecutar {
+      background: var(--verde); color: white; padding: 5px 14px; font-size: 13px;
+    }
+    .salida {
+      font-family: "SF Mono", Consolas, monospace; font-size: 13px;
+      padding: 10px 12px; white-space: pre-wrap; word-break: break-word;
+      border-top: 1px solid var(--gris-borde); display: none;
+    }
+    .salida.ok { background: #f0fdf4; color: #14532d; display: block; }
+    .salida.error { background: #fef2f2; color: #7f1d1d; display: block; }
+    #overlay-carga {
+      position: fixed; inset: 0; background: white; z-index: 100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 15px; color: #475569;
+    }
+    #overlay-carga.oculto { display: none; }
+    .spinner {
+      width: 36px; height: 36px; border: 4px solid #e2e8f0; border-top-color: var(--azul);
+      border-radius: 50%; animation: girar 0.8s linear infinite; margin-bottom: 14px;
+    }
+    @keyframes girar { to { transform: rotate(360deg); } }
+    #banner-entregado {
+      background: #fef9c3; border: 1px solid #eab308; color: #713f12;
+      padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;
+      display: none;
+    }
+    #banner-corregido {
+      background: #eff6ff; border: 1px solid #2563eb; color: #1e3a8a;
+      padding: 14px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;
+      display: none;
+    }
+    #banner-corregido .nota-grande { font-size: 20px; font-weight: 700; }
+    #banner-corregido .feedback-texto { margin-top: 8px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+
+  <div id="overlay-carga">
+    <div class="spinner"></div>
+    <div>Cargando el entorno de Python en tu navegador (puede tardar unos segundos)...</div>
+  </div>
+
+  <div id="barra-superior">
+    <h1>🐍 Python — Robótica y Fabricación Digital I</h1>
+    <span id="estado"></span>
+    <button id="btn-guardar">💾 Guardar progreso</button>
+    <button id="btn-entregar">✅ Entregar</button>
+  </div>
+
+  <div id="contenedor">
+    <div id="banner-corregido"></div>
+    <div id="banner-entregado">
+      Ya has entregado este cuaderno. Puedes seguir viéndolo, pero las celdas están bloqueadas.
+      Si necesitas reabrirlo, pídeselo a tu profesor.
+    </div>
+    <div id="celdas"></div>
+  </div>
+
+  <script>
+    var NOTEBOOK_CELLS = <?!= notebookCellsJson ?>;
+    var SAVED_PROGRESS = <?!= savedProgressJson ?>;
+    var YA_ENTREGADO = <?!= entregado ?>;
+    var NOTA = <?!= nota ?>;
+    var FEEDBACK = <?!= feedbackJson ?>;
+    var pyodideReady = null;
+    var celdasEstado = {}; // id -> texto actual del codigo
+
+    // Guarda el progreso en silencio (sin mensajes de estado) justo antes
+    // de ejecutar una celda, como red de seguridad por si el código se
+    // queda colgado (por ejemplo, un bucle infinito): así, en el peor de
+    // los casos, solo se pierde lo tecleado en los últimos segundos.
+    function guardarProgresoSilencioso() {
+      return new Promise(function (resolve) {
+        google.script.run
+          .withSuccessHandler(function () { resolve(); })
+          .withFailureHandler(function () { resolve(); }) // no bloquear la ejecución aunque falle el guardado
+          .guardarProgreso(recopilarCeldas(), false);
+      });
+    }
+
+    function renderizarCeldas() {
+      var contenedor = document.getElementById('celdas');
+      NOTEBOOK_CELLS.forEach(function (celda) {
+        if (celda.type === 'markdown') {
+          var div = document.createElement('div');
+          div.className = 'celda-md';
+          div.innerHTML = marked.parse(celda.source);
+          contenedor.appendChild(div);
+        } else if (celda.type === 'code') {
+          var textoInicial = (SAVED_PROGRESS && SAVED_PROGRESS[celda.id] !== undefined)
+              ? SAVED_PROGRESS[celda.id] : celda.source;
+          celdasEstado[celda.id] = textoInicial;
+
+          var wrap = document.createElement('div');
+          wrap.className = 'celda-code';
+
+          var textarea = document.createElement('textarea');
+          textarea.value = textoInicial;
+          textarea.spellcheck = false;
+          textarea.disabled = YA_ENTREGADO;
+          textarea.addEventListener('input', function () {
+            celdasEstado[celda.id] = textarea.value;
+          });
+
+          var barra = document.createElement('div');
+          barra.className = 'barra-celda';
+          var btnRun = document.createElement('button');
+          btnRun.className = 'btn-ejecutar';
+          btnRun.textContent = '▶ Ejecutar';
+          btnRun.disabled = YA_ENTREGADO;
+
+          var salida = document.createElement('div');
+          salida.className = 'salida';
+
+          btnRun.addEventListener('click', async function () {
+            await guardarProgresoSilencioso();
+            ejecutarCelda(textarea.value, salida, btnRun);
+          });
+
+          barra.appendChild(btnRun);
+          wrap.appendChild(textarea);
+          wrap.appendChild(barra);
+          wrap.appendChild(salida);
+          contenedor.appendChild(wrap);
+        }
+      });
+    }
+
+    // --- Puente de input(): usa el prompt() nativo del navegador,
+    // que SI es bloqueante de verdad, sin necesitar hilos ni async. ---
+    function puenteInput(mensaje) {
+      var respuesta = window.prompt(mensaje);
+      return respuesta === null ? "" : respuesta;
+    }
+
+    async function inicializarPyodide() {
+      var pyodide = await loadPyodide();
+      pyodide.globals.set("_puente_input", puenteInput);
+      pyodide.runPython(
+        "import builtins\n" +
+        "def _entrada_personalizada(mensaje=''):\n" +
+        "    return _puente_input(mensaje)\n" +
+        "builtins.input = _entrada_personalizada\n"
+      );
+      return pyodide;
+    }
+
+    async function ejecutarCelda(codigo, salidaEl, boton) {
+      boton.disabled = true;
+      boton.textContent = 'Ejecutando...';
+      try {
+        var pyodide = await pyodideReady;
+        var salidaTexto = '';
+        pyodide.setStdout({ batched: function (s) { salidaTexto += s + "\n"; } });
+        pyodide.setStderr({ batched: function (s) { salidaTexto += s + "\n"; } });
+        await pyodide.runPythonAsync(codigo);
+        salidaEl.textContent = salidaTexto || '(sin salida)';
+        salidaEl.className = 'salida ok';
+      } catch (err) {
+        salidaEl.textContent = err.message || String(err);
+        salidaEl.className = 'salida error';
+      } finally {
+        boton.disabled = YA_ENTREGADO;
+        boton.textContent = '▶ Ejecutar';
+      }
+    }
+
+    function recopilarCeldas() {
+      return celdasEstado;
+    }
+
+    document.getElementById('btn-guardar').addEventListener('click', function () {
+      var estadoEl = document.getElementById('estado');
+      estadoEl.textContent = 'Guardando...';
+      google.script.run
+        .withSuccessHandler(function () {
+          estadoEl.textContent = 'Progreso guardado ✓';
+          setTimeout(function () { estadoEl.textContent = ''; }, 3000);
+        })
+        .withFailureHandler(function (err) {
+          estadoEl.textContent = 'Error al guardar: ' + err.message;
+        })
+        .guardarProgreso(recopilarCeldas(), false);
+    });
+
+    document.getElementById('btn-entregar').addEventListener('click', function () {
+      if (!confirm('¿Seguro que quieres entregar? Después de entregar no podrás seguir editando el cuaderno.')) {
+        return;
+      }
+      var estadoEl = document.getElementById('estado');
+      estadoEl.textContent = 'Entregando...';
+      google.script.run
+        .withSuccessHandler(function () {
+          alert('Entregado correctamente.');
+          location.reload();
+        })
+        .withFailureHandler(function (err) {
+          estadoEl.textContent = 'Error al entregar: ' + err.message;
+        })
+        .guardarProgreso(recopilarCeldas(), true);
+    });
+
+    if (YA_ENTREGADO) {
+      document.getElementById('banner-entregado').style.display = 'block';
+      document.getElementById('btn-entregar').disabled = true;
+    }
+
+    if (NOTA !== null) {
+      var bannerNota = document.getElementById('banner-corregido');
+      bannerNota.style.display = 'block';
+      var html = '<div class="nota-grande">📝 Nota: ' + NOTA + ' / 10</div>';
+      if (FEEDBACK) {
+        var feedbackEscapado = FEEDBACK.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += '<div class="feedback-texto">' + feedbackEscapado + '</div>';
+      }
+      bannerNota.innerHTML = html;
+    }
+
+    renderizarCeldas();
+    pyodideReady = inicializarPyodide().then(function (p) {
+      document.getElementById('overlay-carga').classList.add('oculto');
+      return p;
+    }).catch(function (err) {
+      document.getElementById('overlay-carga').innerHTML =
+        '<p style="color:#dc2626">No se ha podido cargar Python: ' + err.message + '</p>';
+    });
+  </script>
+</body>
+</html>

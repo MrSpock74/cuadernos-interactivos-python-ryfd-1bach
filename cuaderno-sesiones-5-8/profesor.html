@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v314.0.3/full/pyodide.js"></script>
+  <style>
+    :root {
+      --azul: #2563eb; --verde: #16a34a; --amarillo: #ca8a04; --rojo: #dc2626;
+      --gris-fondo: #f8fafc; --gris-borde: #e2e8f0; --texto: #1e293b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--gris-fondo); color: var(--texto);
+      margin: 0; padding: 0 0 40px 0;
+    }
+    #barra-superior {
+      background: #0f172a; color: white; padding: 12px 20px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    #barra-superior h1 { font-size: 16px; margin: 0; flex: 1; }
+    #barra-superior a { color: #93c5fd; font-size: 13px; text-decoration: none; }
+    #barra-superior a:hover { text-decoration: underline; }
+    #contenedor { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--gris-borde); font-size: 14px; }
+    th { background: #f1f5f9; font-size: 12px; text-transform: uppercase; color: #64748b; }
+    tr.fila-alumno { cursor: pointer; }
+    tr.fila-alumno:hover { background: #f8fafc; }
+    .etiqueta { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .etiqueta.entregado { background: #dcfce7; color: #166534; }
+    .etiqueta.progreso { background: #fef9c3; color: #854d0e; }
+    .nota-cell { font-weight: 700; }
+
+    #vista-detalle { display: none; }
+    #btn-volver { background: none; border: none; color: var(--azul); font-size: 14px; cursor: pointer; padding: 0 0 12px 0; font-weight: 600; }
+
+    .celda-md { padding: 4px 0; }
+    .celda-md code { background: #eef2f7; padding: 1px 5px; border-radius: 4px; }
+    .celda-code { background: white; border: 1px solid var(--gris-borde); border-radius: 8px; margin: 12px 0; overflow: hidden; }
+    .celda-code textarea {
+      width: 100%; min-height: 60px; font-family: "SF Mono", Consolas, monospace;
+      font-size: 13.5px; border: none; padding: 12px; resize: vertical;
+      background: #0f172a; color: #e2e8f0; display: block;
+    }
+    .barra-celda { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #f1f5f9; border-top: 1px solid var(--gris-borde); }
+    .btn-ejecutar { background: var(--verde); color: white; border: none; border-radius: 6px; padding: 5px 14px; font-size: 13px; cursor: pointer; font-weight: 600; }
+    .salida { font-family: "SF Mono", Consolas, monospace; font-size: 13px; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; border-top: 1px solid var(--gris-borde); display: none; }
+    .salida.ok { background: #f0fdf4; color: #14532d; display: block; }
+    .salida.error { background: #fef2f2; color: #7f1d1d; display: block; }
+
+    #panel-correccion {
+      position: sticky; bottom: 0; background: white; border: 1px solid var(--gris-borde);
+      border-radius: 10px 10px 0 0; box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+      padding: 16px 20px; margin-top: 20px;
+    }
+    #panel-correccion label { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 4px; }
+    #panel-correccion input[type=number] { width: 90px; padding: 8px; border: 1px solid var(--gris-borde); border-radius: 6px; font-size: 15px; }
+    #panel-correccion textarea { width: 100%; min-height: 70px; padding: 8px; border: 1px solid var(--gris-borde); border-radius: 6px; font-size: 14px; font-family: inherit; }
+    #panel-correccion .fila { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 10px; }
+    #btn-guardar-correccion { background: var(--azul); color: white; border: none; border-radius: 6px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    #btn-sugerir { background: #7c3aed; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #btn-sugerir:disabled { opacity: .6; cursor: not-allowed; }
+    #estado-correccion { font-size: 13px; color: #16a34a; margin-left: 10px; }
+
+    #overlay-carga { position: fixed; inset: 0; background: white; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 15px; color: #475569; }
+    #overlay-carga.oculto { display: none; }
+    .spinner { width: 36px; height: 36px; border: 4px solid #e2e8f0; border-top-color: var(--azul); border-radius: 50%; animation: girar .8s linear infinite; margin-bottom: 14px; }
+    @keyframes girar { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div id="overlay-carga">
+    <div class="spinner"></div>
+    <div>Cargando el entorno de Python en tu navegador...</div>
+  </div>
+
+  <div id="barra-superior">
+    <h1>🧑‍🏫 Panel de corrección — RFD I Python</h1>
+    <a href="<?!= appUrl ?>" target="_blank">↗ Ver como lo ve el alumnado</a>
+  </div>
+
+  <div id="contenedor">
+
+    <div id="vista-lista">
+      <table>
+        <thead>
+          <tr><th>Alumno/a</th><th>Última actualización</th><th>Estado</th><th>Nota</th></tr>
+        </thead>
+        <tbody id="cuerpo-tabla"></tbody>
+      </table>
+    </div>
+
+    <div id="vista-detalle">
+      <button id="btn-volver">← Volver a la lista</button>
+      <h2 id="titulo-alumno"></h2>
+      <button id="btn-reabrir" style="display:none;background:#f59e0b;color:white;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px">🔓 Reabrir entrega (permitir seguir editando)</button>
+      <div id="celdas-detalle"></div>
+
+      <div id="panel-correccion">
+        <div style="margin-bottom:12px">
+          <button id="btn-sugerir">🔍 Sugerir corrección automática</button>
+          <span id="estado-sugerencia" style="font-size:13px;color:#64748b;margin-left:10px"></span>
+        </div>
+        <div class="fila">
+          <div>
+            <label>Nota (0-10)</label>
+            <input type="number" id="input-nota" min="0" max="10" step="0.1">
+          </div>
+          <div style="flex:1">
+            <label>Retroalimentación</label>
+            <textarea id="input-feedback" placeholder="Comentarios para el alumno/a..."></textarea>
+          </div>
+        </div>
+        <button id="btn-guardar-correccion">Guardar corrección</button>
+        <span id="estado-correccion"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    var NOTEBOOK_CELLS = <?!= notebookCellsJson ?>;
+    var PROGRESOS = <?!= progresosJson ?>;
+    var pyodideReady = null;
+    var alumnoActual = null;
+    var colaEntradas = [];
+
+    // --- Puentes de input(): uno manual (prompt real, para el boton
+    // "Probar") y otro de pruebas (cola predefinida, para la correccion
+    // automatica, que no puede quedarse esperando a que alguien escriba). ---
+    function puenteInputManual(mensaje) {
+      var respuesta = window.prompt(mensaje);
+      return respuesta === null ? "" : respuesta;
+    }
+    function puenteInputTest(mensaje) {
+      if (colaEntradas.length === 0) {
+        throw new Error("Entradas de prueba agotadas");
+      }
+      return colaEntradas.shift();
+    }
+
+    // --- Definicion de comprobaciones automaticas por celda ---
+    // 'inputs': valores que se le "teclean" automaticamente si la celda usa input().
+    // 'verificar': recibe (ns, salida) -- ns es el espacio de nombres aislado
+    // de esa ejecucion (tipo diccionario de Python) y salida es el texto impreso.
+    // Busca, entre TODAS las funciones que el alumno haya definido (sea
+    // cual sea su nombre), si alguna cumple la prueba de comportamiento
+    // indicada. Así no importa si llaman "es_par", "esPar" o "comprobar".
+    function buscarFuncionQueCumpla(ns, prueba) {
+      var candidatos = [];
+      for (var par of ns) {
+        var nombre = par[0], valor = par[1];
+        if (typeof nombre === "string" && nombre.indexOf("__") === 0) continue;
+        if (typeof valor === "function") candidatos.push(valor);
+      }
+      for (var i = 0; i < candidatos.length; i++) {
+        try {
+          if (prueba(candidatos[i])) return true;
+        } catch (e) { /* esta función no encaja con la prueba, seguimos */ }
+      }
+      return false;
+    }
+
+    var CRITERIOS_CORRECCION = [
+      // --- Nivel 1: evidencias oficiales (corrección exacta) ---
+      {
+        id: "ea08f7b5", nombre: "Mini-desafío: Variables (Sesión 5)", peso: 2, tipo: "exacto", inputs: [],
+        verificar: function (ns, salida) {
+          return salida.indexOf("22") !== -1 && salida.indexOf("°C") !== -1;
+        }
+      },
+      {
+        id: "9d99d207", nombre: "Mini-desafío: Operadores (Sesión 6)", peso: 2, tipo: "exacto", inputs: [],
+        verificar: function (ns, salida) { return salida.indexOf("True") !== -1; }
+      },
+      {
+        id: "d27bfd8e", nombre: "Mini-desafío: if (Sesión 6)", peso: 2, tipo: "exacto", inputs: ["75"],
+        verificar: function (ns, salida) { return salida.toLowerCase().indexOf("sobrecalent") !== -1; }
+      },
+      {
+        id: "f5ca757d", nombre: "Mini-desafío: while (Sesión 7)", peso: 2, tipo: "exacto", inputs: [],
+        verificar: function (ns, salida) {
+          return salida.indexOf("5") !== -1 && salida.indexOf("0") !== -1 &&
+                 salida.toLowerCase().indexOf("despegue") !== -1;
+        }
+      },
+      {
+        id: "3a0a7c68", nombre: "Mini-desafío: for (Sesión 7)", peso: 2, tipo: "exacto", inputs: [],
+        verificar: function (ns, salida) {
+          var vueltas = (salida.match(/90/g) || []).length;
+          return vueltas >= 4 && salida.toLowerCase().indexOf("vuelta completa") !== -1;
+        }
+      },
+      {
+        id: "52e4030f", nombre: "Mini-desafío: Funciones es_par (Sesión 8)", peso: 2, tipo: "exacto", inputs: [],
+        verificar: function (ns) {
+          return buscarFuncionQueCumpla(ns, function (fn) {
+            return fn(4) === true && fn(7) === false;
+          });
+        }
+      },
+      {
+        id: "61b1511b", nombre: "Reto final (Opción A o B) — Evidencia CE1", peso: 4, tipo: "exacto", inputs: ["20", "35", "10", "salir"],
+        verificar: function (ns, salida) {
+          var esCollatz = buscarFuncionQueCumpla(ns, function (fn) {
+            return fn(6) === 8 && fn(1) === 0;
+          });
+          if (esCollatz) return true;
+          var esClasificador = buscarFuncionQueCumpla(ns, function (fn) {
+            var r = fn(5);
+            return typeof r === "string" && r.length > 0;
+          });
+          if (esClasificador) return true;
+          return salida.trim().length > 0;
+        }
+      },
+      // --- Nivel 2: retos de sesión (práctica, se valora el intento) ---
+      {
+        id: "00092664", nombre: "Reto de sesión: Ficha de un sensor (Sesión 5)", peso: 1, tipo: "intento",
+        inputs: ["luz", "450.5"]
+      },
+      {
+        id: "5f2d193a", nombre: "Reto de sesión: Mi reto completo (Sesión 7)", peso: 1, tipo: "intento",
+        inputs: []
+      },
+      // --- Nivel 3: banco de retos opcional (práctica extra, se valora el intento) ---
+      {
+        id: "f77242e9", nombre: "Opcional: Cálculo de promedio", peso: 0.5, tipo: "intento",
+        inputs: ["7", "8", "9"]
+      },
+      {
+        id: "d4608d35", nombre: "Opcional: Test de primalidad", peso: 0.5, tipo: "intento",
+        inputs: ["7"]
+      },
+      {
+        id: "653596f4", nombre: "Opcional: Adivina adivinador", peso: 0.5, tipo: "intento",
+        inputs: ["50", "25", "75", "60", "65", "70", "68", "69", "salir", "exit"]
+      },
+      {
+        id: "9f4e55e5", nombre: "Opcional: La leyenda de Filius Bonacci", peso: 0.5, tipo: "intento",
+        inputs: ["10"]
+      }
+    ];
+
+    function formatearFecha(iso) {
+      if (!iso) return '—';
+      var d = new Date(iso);
+      return d.toLocaleDateString('es-ES') + ' ' + d.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+    }
+
+    function renderizarLista() {
+      var cuerpo = document.getElementById('cuerpo-tabla');
+      cuerpo.innerHTML = '';
+      PROGRESOS.forEach(function (p) {
+        var tr = document.createElement('tr');
+        tr.className = 'fila-alumno';
+        tr.innerHTML =
+          '<td>' + p.email + '</td>' +
+          '<td>' + formatearFecha(p.actualizado) + '</td>' +
+          '<td><span class="etiqueta ' + (p.entregado ? 'entregado">Entregado' : 'progreso">En progreso') + '</span></td>' +
+          '<td class="nota-cell">' + (p.nota !== null && p.nota !== '' ? p.nota : '—') + '</td>';
+        tr.addEventListener('click', function () { abrirDetalle(p); });
+        cuerpo.appendChild(tr);
+      });
+    }
+
+    function abrirDetalle(progreso) {
+      alumnoActual = progreso;
+      document.getElementById('vista-lista').style.display = 'none';
+      document.getElementById('vista-detalle').style.display = 'block';
+      document.getElementById('titulo-alumno').textContent = progreso.email;
+      document.getElementById('input-nota').value = progreso.nota !== null ? progreso.nota : '';
+      document.getElementById('input-feedback').value = progreso.feedback || '';
+      document.getElementById('estado-correccion').textContent = '';
+
+      var btnReabrir = document.getElementById('btn-reabrir');
+      btnReabrir.style.display = progreso.entregado ? 'inline-block' : 'none';
+
+      var contenedor = document.getElementById('celdas-detalle');
+      contenedor.innerHTML = '';
+
+      NOTEBOOK_CELLS.forEach(function (celda) {
+        if (celda.type === 'markdown') {
+          var div = document.createElement('div');
+          div.className = 'celda-md';
+          div.innerHTML = marked.parse(celda.source);
+          contenedor.appendChild(div);
+        } else if (celda.type === 'code') {
+          var texto = (progreso.celdas && progreso.celdas[celda.id] !== undefined)
+              ? progreso.celdas[celda.id] : celda.source;
+
+          var wrap = document.createElement('div');
+          wrap.className = 'celda-code';
+          var textarea = document.createElement('textarea');
+          textarea.value = texto;
+          textarea.spellcheck = false;
+
+          var barra = document.createElement('div');
+          barra.className = 'barra-celda';
+          var btnRun = document.createElement('button');
+          btnRun.className = 'btn-ejecutar';
+          btnRun.textContent = '▶ Probar';
+
+          var salida = document.createElement('div');
+          salida.className = 'salida';
+
+          btnRun.addEventListener('click', function () {
+            ejecutarCelda(textarea.value, salida, btnRun);
+          });
+
+          barra.appendChild(btnRun);
+          wrap.appendChild(textarea);
+          wrap.appendChild(barra);
+          wrap.appendChild(salida);
+          contenedor.appendChild(wrap);
+        }
+      });
+    }
+
+    async function sugerirCorreccion() {
+      var pyodide = await pyodideReady;
+      var btn = document.getElementById("btn-sugerir");
+      var estadoEl = document.getElementById("estado-sugerencia");
+      btn.disabled = true;
+      btn.textContent = "Analizando...";
+      estadoEl.textContent = "";
+
+      pyodide.runPython("builtins.input = _entrada_test");
+
+      var resultados = [];
+      var pesoTotal = 0, pesoConseguido = 0;
+
+      for (var i = 0; i < CRITERIOS_CORRECCION.length; i++) {
+        var criterio = CRITERIOS_CORRECCION[i];
+        pesoTotal += criterio.peso;
+        var codigo = (alumnoActual.celdas && alumnoActual.celdas[criterio.id] !== undefined)
+            ? alumnoActual.celdas[criterio.id] : "";
+
+        if (!codigo || !codigo.trim()) {
+          resultados.push({ nombre: criterio.nombre, ok: false, sinEntregar: true });
+          continue;
+        }
+
+        colaEntradas = criterio.inputs.slice();
+        var salidaTexto = "";
+        pyodide.setStdout({ batched: function (s) { salidaTexto += s + "\n"; } });
+        pyodide.setStderr({ batched: function (s) { salidaTexto += s + "\n"; } });
+
+        var ns = pyodide.toPy({});
+        var paso = false;
+        var huboError = false;
+        try {
+          await pyodide.runPythonAsync(codigo, { globals: ns });
+          if (criterio.tipo === "exacto") {
+            paso = !!criterio.verificar(ns, salidaTexto);
+          } else {
+            paso = salidaTexto.trim().length > 0;
+          }
+        } catch (err) {
+          paso = false;
+          huboError = true;
+        }
+        ns.destroy();
+
+        if (paso) pesoConseguido += criterio.peso;
+        resultados.push({ nombre: criterio.nombre, ok: paso, error: huboError, peso: criterio.peso, tipo: criterio.tipo });
+      }
+
+      pyodide.runPython("builtins.input = _entrada_manual");
+
+      var notaSugerida = pesoTotal > 0 ? Math.round((pesoConseguido / pesoTotal) * 10 * 10) / 10 : 0;
+
+      function formatearLinea(r) {
+        if (r.sinEntregar) return "⬜ " + r.nombre + " — sin resolver";
+        if (r.error) return "⚠️ " + r.nombre + " — se ejecutó con error";
+        return (r.ok ? "✅ " : "❌ ") + r.nombre;
+      }
+
+      var evidencias = resultados.filter(function (r) { return r.tipo === "exacto"; });
+      var practicas = resultados.filter(function (r) { return r.tipo === "intento"; });
+
+      var feedback =
+        "EVIDENCIAS OFICIALES (peso principal en la nota):\n" +
+        evidencias.map(formatearLinea).join("\n") +
+        "\n\nRETOS Y PRÁCTICA (se valora el intento, no solo el acierto exacto):\n" +
+        practicas.map(formatearLinea).join("\n");
+
+      document.getElementById("input-nota").value = notaSugerida;
+      document.getElementById("input-feedback").value = feedback;
+      estadoEl.textContent = "Propuesta generada — revísala antes de guardar";
+
+      btn.disabled = false;
+      btn.textContent = "🔍 Sugerir corrección automática";
+    }
+
+    document.getElementById("btn-sugerir").addEventListener("click", sugerirCorreccion);
+
+    document.getElementById('btn-reabrir').addEventListener('click', function () {
+      if (!confirm('¿Reabrir el cuaderno de ' + alumnoActual.email + '? Podrá seguir editando y volver a entregar.')) {
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function () {
+          alumnoActual.entregado = false;
+          document.getElementById('btn-reabrir').style.display = 'none';
+          var fila = PROGRESOS.find(function (p) { return p.email === alumnoActual.email; });
+          if (fila) fila.entregado = false;
+          renderizarLista();
+          alert('Entrega reabierta. Ya puede seguir editando su cuaderno.');
+        })
+        .withFailureHandler(function (err) {
+          alert('Error al reabrir: ' + err.message);
+        })
+        .reabrirEntrega(alumnoActual.email);
+    });
+
+    document.getElementById('btn-volver').addEventListener('click', function () {
+      document.getElementById('vista-detalle').style.display = 'none';
+      document.getElementById('vista-lista').style.display = 'block';
+    });
+
+    document.getElementById('btn-guardar-correccion').addEventListener('click', function () {
+      var nota = parseFloat(document.getElementById('input-nota').value);
+      var feedback = document.getElementById('input-feedback').value;
+      var estadoEl = document.getElementById('estado-correccion');
+      estadoEl.textContent = 'Guardando...';
+
+      google.script.run
+        .withSuccessHandler(function (resultado) {
+          alumnoActual.nota = nota;
+          alumnoActual.feedback = feedback;
+          renderizarLista();
+          if (resultado && resultado.classroomOk) {
+            estadoEl.textContent = 'Guardado ✓ — nota volcada en Classroom ✓';
+          } else {
+            estadoEl.textContent = 'Guardado ✓ (aviso: no se pudo volcar en Classroom' +
+              (resultado && resultado.classroomError ? ': ' + resultado.classroomError : '') + ')';
+          }
+        })
+        .withFailureHandler(function (err) {
+          estadoEl.textContent = 'Error: ' + err.message;
+        })
+        .guardarCorreccion(alumnoActual.email, nota, feedback);
+    });
+
+    // --- Ejecucion de Python ---
+    async function inicializarPyodide() {
+      var pyodide = await loadPyodide();
+      pyodide.globals.set("_bridge_input_manual", puenteInputManual);
+      pyodide.globals.set("_bridge_input_test", puenteInputTest);
+      pyodide.runPython(
+        "import builtins\n" +
+        "def _entrada_manual(mensaje=''):\n" +
+        "    return _bridge_input_manual(mensaje)\n" +
+        "def _entrada_test(mensaje=''):\n" +
+        "    return _bridge_input_test(mensaje)\n" +
+        "builtins.input = _entrada_manual\n"
+      );
+      return pyodide;
+    }
+
+    async function ejecutarCelda(codigo, salidaEl, boton) {
+      boton.disabled = true;
+      boton.textContent = 'Ejecutando...';
+      try {
+        var pyodide = await pyodideReady;
+        var salidaTexto = '';
+        pyodide.setStdout({ batched: function (s) { salidaTexto += s + "\n"; } });
+        pyodide.setStderr({ batched: function (s) { salidaTexto += s + "\n"; } });
+        await pyodide.runPythonAsync(codigo);
+        salidaEl.textContent = salidaTexto || '(sin salida)';
+        salidaEl.className = 'salida ok';
+      } catch (err) {
+        salidaEl.textContent = err.message || String(err);
+        salidaEl.className = 'salida error';
+      } finally {
+        boton.disabled = false;
+        boton.textContent = '▶ Probar';
+      }
+    }
+
+    renderizarLista();
+    pyodideReady = inicializarPyodide().then(function (p) {
+      document.getElementById('overlay-carga').classList.add('oculto');
+      return p;
+    }).catch(function (err) {
+      document.getElementById('overlay-carga').innerHTML =
+        '<p style="color:#dc2626">No se ha podido cargar Python: ' + err.message + '</p>';
+    });
+  </script>
+</body>
+</html>
